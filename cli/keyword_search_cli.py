@@ -3,14 +3,17 @@
 import argparse
 import json
 import os
+import string
+
+def strip_punctuation(text):
+    return text.translate(str.maketrans('', '', string.punctuation)).lower()
 
 def keyword_search(search_string):
-    print(os.path.dirname(os.path.dirname(__file__)))
     movies_file = open(os.path.join(os.path.dirname(os.path.dirname(__file__)), "data", "movies.json"))
     movies_json = json.load(movies_file)
     matches = []
     for movie in movies_json['movies']:
-        if search_string.lower() in movie["title"].lower():
+        if strip_punctuation(search_string) in strip_punctuation(movie["title"]):
             matches.append(movie)
         sorted_matches = sorted(matches, key=lambda d: d['id'])        
     return sorted_matches
