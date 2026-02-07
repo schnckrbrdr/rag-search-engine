@@ -4,18 +4,70 @@ import argparse
 import json
 import os
 import string
+from nltk.stem import PorterStemmer
 
-def strip_punctuation(text):
+# load movie data and stopwords
+def load_data() -> tuple[list[dict], list[str]]:
+    try:
+        movies_file = open(os.path.join(os.path.dirname(os.path.dirname(__file__)), "data", "movies.json"))
+        movies_json = json.load(movies_file)
+        stop_words_file = open(os.path.join(os.path.dirname(os.path.dirname(__file__)), "data", "stopwords.txt"))
+        stopwords = stop_words_file.read().splitlines()
+        return movies_json, stopwords
+    except Exception as e:
+        print(e)
+        return None, None
+
+# Tokenize passed text and remove tokens listed in stopwords list
+def tokenize(text: str, stopwords: list[str]) -> list[str]:
+    stemmer = PorterStemmer()
+    text_tokens = text.split()
+    final_tokens = []
+    for text_token in text_tokens:
+        if text_token not in stopwords:
+            final_tokens.append(stemmer.stem(text_token))
+    return final_tokens
+
+def strip_punctuation(text: str) -> str:
     return text.translate(str.maketrans('', '', string.punctuation)).lower()
 
-def keyword_search(search_string):
-    movies_file = open(os.path.join(os.path.dirname(os.path.dirname(__file__)), "data", "movies.json"))
-    movies_json = json.load(movies_file)
+def keyword_search(query_string: str, movies_json: list[dict], stopwords: list[str], limit: int = 5) -> list[dict]:
+    
     matches = []
-    for movie in movies_json['movies']:
-        if strip_punctuation(search_string) in strip_punctuation(movie["title"]):
-            matches.append(movie)
-        sorted_matches = sorted(matches, key=lambda d: d['id'])        
+    query_tokens = tokenize(strip_punctuation(query_string), stopwords)    
+    # Iterate over all movies in list (via dict-entry)
+    for movie in movies_json['movies']:        
+        
+        # tokenize and sanitize movie title
+        movie_tokens = tokenize(strip_punctuation(movie["title"]), stopwords)
+        
+        # set backward counter to end of movie-title tokens
+        i = len(query_tokens) - 1        
+        
+        # iterate over all movie-title tokens
+        while i >= 0:
+            i -= 1
+            
+            # set backward counter to end of query tokens
+            j = len(movie_tokens) - 1
+            
+            # iterate over all query tokens
+            while j >= 0:
+                j -= 1
+                
+                # if a qery token is contained in a movie token, add movie to list of matches and end loop
+                if query_tokens[i] in movie_tokens[j]:
+                    matches.append(movie)
+
+                    # Force end of loop for current movie if match was found                   
+                    i = -1
+                    j = -1
+        
+        # End search when result limit of search is reached
+        if len(matches) >= limit:            
+            break
+
+    sorted_matches = sorted(matches, key=lambda d: d['id'])
     return sorted_matches
 
 def main() -> None:
@@ -30,10 +82,14 @@ def main() -> None:
     match args.command:
         case "search":
             print(f"Searching for: {args.query}")
-            try:
-                sorted_matches = keyword_search(args.query)
-                for i in range(0, min(len(sorted_matches), 5)):
-                    print(f"{i + 1}. {sorted_matches[i]['title']}")
+            try:  
+                movies_json, stopwords = load_data()              
+                if movies_json != None and stopwords != None:
+                    sorted_matches = keyword_search(args.query, movies_json, stopwords)
+                    for i in range(0, min(len(sorted_matches), 6)):
+                        print(f"{i + 1}. {sorted_matches[i]['title']}")
+                else:
+                    print("Error reading data!")
             except Exception as e:
                 print(f"Error: {e}")
 
