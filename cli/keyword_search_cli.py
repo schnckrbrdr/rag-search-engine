@@ -1,45 +1,18 @@
 #!/usr/bin/env python3
 
 import argparse
-import json
-import os
-import string
-from nltk.stem import PorterStemmer
+from utility import load_data, load_stopwords, tokenize
 
-# load movie data and stopwords
-def load_data() -> tuple[list[dict], list[str]]:
-    try:
-        movies_file = open(os.path.join(os.path.dirname(os.path.dirname(__file__)), "data", "movies.json"))
-        movies_json = json.load(movies_file)
-        stop_words_file = open(os.path.join(os.path.dirname(os.path.dirname(__file__)), "data", "stopwords.txt"))
-        stopwords = stop_words_file.read().splitlines()
-        return movies_json, stopwords
-    except Exception as e:
-        print(e)
-        return None, None
-
-# Tokenize passed text and remove tokens listed in stopwords list
-def tokenize(text: str, stopwords: list[str]) -> list[str]:
-    stemmer = PorterStemmer()
-    text_tokens = text.split()
-    final_tokens = []
-    for text_token in text_tokens:
-        if text_token not in stopwords:
-            final_tokens.append(stemmer.stem(text_token))
-    return final_tokens
-
-def strip_punctuation(text: str) -> str:
-    return text.translate(str.maketrans('', '', string.punctuation)).lower()
 
 def keyword_search(query_string: str, movies_json: list[dict], stopwords: list[str], limit: int = 5) -> list[dict]:
     
     matches = []
-    query_tokens = tokenize(strip_punctuation(query_string), stopwords)    
+    query_tokens = tokenize(query_string, stopwords)    
     # Iterate over all movies in list (via dict-entry)
     for movie in movies_json['movies']:        
         
         # tokenize and sanitize movie title
-        movie_tokens = tokenize(strip_punctuation(movie["title"]), stopwords)
+        movie_tokens = tokenize(movie["title"], stopwords)
         
         # set backward counter to end of movie-title tokens
         i = len(query_tokens) - 1        
@@ -77,13 +50,16 @@ def main() -> None:
     search_parser = subparsers.add_parser("search", help="Search movies using BM25")
     search_parser.add_argument("query", type=str, help="Search query")
 
+    build_parser = subparsers.add_parser("build", help="(Re)build index of movies")
+
     args = parser.parse_args()
 
     match args.command:
         case "search":
             print(f"Searching for: {args.query}")
             try:  
-                movies_json, stopwords = load_data()              
+                movies_json = load_data()              
+                stopwords = load_stopwords()
                 if movies_json != None and stopwords != None:
                     sorted_matches = keyword_search(args.query, movies_json, stopwords)
                     for i in range(0, min(len(sorted_matches), 6)):
@@ -92,7 +68,8 @@ def main() -> None:
                     print("Error reading data!")
             except Exception as e:
                 print(f"Error: {e}")
-
+        case "build":
+            print("Building Index...")
         case _:
             parser.print_help()
 

@@ -1,4 +1,4 @@
-from keyword_search_cli import tokenize
+from utility import tokenize
 
 class InvertedIndex:
 
