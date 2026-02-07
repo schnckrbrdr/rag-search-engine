@@ -4,7 +4,7 @@ import string
 from nltk.stem import PorterStemmer
 
 # load movie data and stopwords
-def load_data() -> list[dict]:
+def load_movies() -> list[dict]:
     try:
         movies_file = open(os.path.join(os.path.dirname(os.path.dirname(__file__)), "data", "movies.json"))
         movies_json = json.load(movies_file)        
