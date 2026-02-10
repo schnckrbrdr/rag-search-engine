@@ -28,7 +28,17 @@ def keyword_search(query_string: str, inverted_index: InvertedIndex, limit: int 
 def build_command() -> None:
     inverted_index = InvertedIndex()
     inverted_index.build()
-    inverted_index.save()    
+    inverted_index.save() 
+
+def bm25_idf_command(term: str) -> float:
+    inverted_index = InvertedIndex()
+    if not inverted_index.load():
+        print("Index not found. Build index first!")
+    else:
+        try:
+            return inverted_index.get_bm25_idf(term)
+        except Exception as e:
+            print(f"Error: {e}")  
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Keyword Search CLI")
@@ -48,7 +58,10 @@ def main() -> None:
 
     tfidf_parser = subparsers.add_parser("tfidf", help="Calculate the TFIDF-Score of a term in context of a given DocID relative of the whole index of documents")
     tfidf_parser.add_argument("doc_id", type=int, help="DocumentID to search term in")
-    tfidf_parser.add_argument("term", type=str, help="Term to search for")
+    tfidf_parser.add_argument("term", type=str, help="Term to get TDIDF score for")
+
+    bm25_idf_parser = subparsers.add_parser("bm25idf", help="Get BM25 IDF score for a given term")
+    bm25_idf_parser.add_argument("term", type=str, help="Term to get BM25 IDF score for")
 
     args = parser.parse_args()
 
@@ -93,6 +106,12 @@ def main() -> None:
                     print(f"The TFIDF-Score of '{args.term}' in DocID '{args.doc_id}' relative to the whole dataset is: {inverted_index.get_tfidf(args.doc_id, args.term):.2f}")
                 except Exception as e:
                     print(f"Error: {e}")
+
+        case "bm25idf":
+            try:
+                print(f"BM25 IDF score of '{args.term}': {bm25_idf_command(args.term):.2f}")
+            except Exception as e:
+                print(f"Error: {e}")
 
         case "build":
             try:

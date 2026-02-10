@@ -66,6 +66,20 @@ class InvertedIndex:
             except Exception as e:
                 print("Error: TFIDF could not be calculated")
 
+    def get_bm25_idf(self, term: str) -> float:
+        try:
+            # document frequency - how many documents in the whole dataset contain the search term
+            df = 0
+            # document count - how many documents are in the dataset
+            n = 0
+            for entry in self.docmap:
+                if self.get_tf(entry, term) > 0:
+                    df += 1
+                n += 1                    
+            return math.log((n - df + 0.5) / (df + 0.5) + 1)                
+        except Exception as e:
+            print("Error: BM25_IDF could not be calculated") 
+
     def build(self) -> None:
         movies = load_movies()
         self.index.clear()
