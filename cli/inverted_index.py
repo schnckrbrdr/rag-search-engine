@@ -56,6 +56,15 @@ class InvertedIndex:
             
             return math.log((total_doc_count + 1) / (term_match_doc_count + 1))
 
+    def get_tfidf(self, doc_id: int, term: str) -> float:
+        tokens = tokenize(term, self.stopwords)
+        if len(tokens) != 1:
+            raise Exception("Error: Must supply exactly one serach term")
+        else:
+            try:
+                return self.get_tf(doc_id, term) * self.get_idf(term)
+            except Exception as e:
+                print("Error: TFIDF could not be calculated")
 
     def build(self) -> None:
         movies = load_movies()

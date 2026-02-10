@@ -46,6 +46,10 @@ def main() -> None:
     inverse_document_frequency_parser = subparsers.add_parser("idf", help="Calculate the inverse document frequency of given term")
     inverse_document_frequency_parser.add_argument("term", type=str, help="Term to get inverse frequency for")
 
+    tfidf_parser = subparsers.add_parser("tfidf", help="Calculate the TFIDF-Score of a term in context of a given DocID relative of the whole index of documents")
+    tfidf_parser.add_argument("doc_id", type=int, help="DocumentID to search term in")
+    tfidf_parser.add_argument("term", type=str, help="Term to search for")
+
     args = parser.parse_args()
 
     match args.command:
@@ -77,6 +81,16 @@ def main() -> None:
                 try:
                     idf = inverted_index.get_idf(args.term)
                     print(f"Inverse document frequency of '{args.term}': {idf:.2f}")
+                except Exception as e:
+                    print(f"Error: {e}")
+
+        case "tfidf":
+            inverted_index = InvertedIndex()
+            if not inverted_index.load():
+                print("Index not found. Build index first!")
+            else:
+                try:                    
+                    print(f"The TFIDF-Score of '{args.term}' in DocID '{args.doc_id}' relative to the whole dataset is: {inverted_index.get_tfidf(args.doc_id, args.term):.2f}")
                 except Exception as e:
                     print(f"Error: {e}")
 
