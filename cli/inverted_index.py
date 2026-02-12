@@ -1,6 +1,7 @@
 import os
 import pickle
 from utility import load_movies, load_stopwords, tokenize
+from constants import DEFAULT_BM25_K1
 import collections
 import math
 
@@ -36,7 +37,7 @@ class InvertedIndex:
         if doc_id in self.term_frequencies:
             tokens = tokenize(term, self.stopwords)
             if len(tokens) != 1:
-                raise Exception("Error: Too many or no query tokens")
+                raise Exception("Error: Must supply exactly one search term")
             else:                
                 return self.term_frequencies[doc_id][tokens[0]] if tokens[0] in self.term_frequencies[doc_id] else 0
         else:
@@ -45,7 +46,7 @@ class InvertedIndex:
     def get_idf(self, term: str) -> float:        
         tokens = tokenize(term, self.stopwords)
         if len(tokens) != 1:
-            raise Exception("Error: Too many or no query tokens")
+            raise Exception("Error: Must supply exactly one serch term")
         else:
             term_match_doc_count = 0
             total_doc_count = 0
@@ -59,7 +60,7 @@ class InvertedIndex:
     def get_tfidf(self, doc_id: int, term: str) -> float:
         tokens = tokenize(term, self.stopwords)
         if len(tokens) != 1:
-            raise Exception("Error: Must supply exactly one serach term")
+            raise Exception("Error: Must supply exactly one search term")
         else:
             try:
                 return self.get_tf(doc_id, term) * self.get_idf(term)
@@ -79,6 +80,11 @@ class InvertedIndex:
             return math.log((n - df + 0.5) / (df + 0.5) + 1)                
         except Exception as e:
             print("Error: BM25_IDF could not be calculated") 
+
+    def get_bm25_tf(self, doc_id: int, term: str, k1: float = DEFAULT_BM25_K1) -> float:
+        tf = self.get_tf(doc_id, term)
+        saturated_tf = (tf * (k1 + 1)) / (tf + k1)
+        return saturated_tf
 
     def build(self) -> None:
         movies = load_movies()

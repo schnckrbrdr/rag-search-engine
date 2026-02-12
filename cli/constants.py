@@ -1,0 +1,1 @@
+DEFAULT_BM25_K1 = 1.5

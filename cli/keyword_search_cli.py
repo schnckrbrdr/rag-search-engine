@@ -3,6 +3,7 @@
 import argparse
 from utility import load_stopwords, tokenize
 from inverted_index import InvertedIndex
+from constants import DEFAULT_BM25_K1
 
 def keyword_search(query_string: str, inverted_index: InvertedIndex, limit: int = 5) -> list[dict]:
     
@@ -38,7 +39,18 @@ def bm25_idf_command(term: str) -> float:
         try:
             return inverted_index.get_bm25_idf(term)
         except Exception as e:
-            print(f"Error: {e}")  
+            print(f"Error: {e}") 
+
+def bm25_tf_command(doc_id: int, term: str, k1: float = DEFAULT_BM25_K1) -> float:
+    inverted_index = InvertedIndex()
+    if not inverted_index.load():
+        print("Index not found. Build index first!")
+    else:
+        try:
+            return inverted_index.get_bm25_tf(doc_id, term, k1)
+        except Exception as e:
+            print(f"Error: {e}")            
+    
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Keyword Search CLI")
@@ -62,6 +74,11 @@ def main() -> None:
 
     bm25_idf_parser = subparsers.add_parser("bm25idf", help="Get BM25 IDF score for a given term")
     bm25_idf_parser.add_argument("term", type=str, help="Term to get BM25 IDF score for")
+
+    bm25_tf_parser = subparsers.add_parser("bm25tf", help="Get BM25 TF score for a given document ID and term")
+    bm25_tf_parser.add_argument("doc_id", type=int, help="Document ID")
+    bm25_tf_parser.add_argument("term", type=str, help="Term to get BM25 TF score for")
+    bm25_tf_parser.add_argument("k1", type=float, nargs='?', default=DEFAULT_BM25_K1, help="Tunable BM25 K1 parameter")
 
     args = parser.parse_args()
 
@@ -110,6 +127,12 @@ def main() -> None:
         case "bm25idf":
             try:
                 print(f"BM25 IDF score of '{args.term}': {bm25_idf_command(args.term):.2f}")
+            except Exception as e:
+                print(f"Error: {e}")
+
+        case "bm25tf":
+            try:
+                print(f"BM25 TF score of '{args.term}' in document '{args.doc_id}': {bm25_tf_command(args.doc_id, args.term, args.k1):.2f}")
             except Exception as e:
                 print(f"Error: {e}")
 
