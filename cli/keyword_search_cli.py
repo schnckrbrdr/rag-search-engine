@@ -3,7 +3,7 @@
 import argparse
 from utility import load_stopwords, tokenize
 from inverted_index import InvertedIndex
-from constants import DEFAULT_BM25_K1
+from constants import DEFAULT_BM25_K1, DEFAULT_BM25_B
 
 def keyword_search(query_string: str, inverted_index: InvertedIndex, limit: int = 5) -> list[dict]:
     
@@ -41,13 +41,13 @@ def bm25_idf_command(term: str) -> float:
         except Exception as e:
             print(f"Error: {e}") 
 
-def bm25_tf_command(doc_id: int, term: str, k1: float = DEFAULT_BM25_K1) -> float:
+def bm25_tf_command(doc_id: int, term: str, k1: float = DEFAULT_BM25_K1, b: float = DEFAULT_BM25_B) -> float:
     inverted_index = InvertedIndex()
     if not inverted_index.load():
         print("Index not found. Build index first!")
     else:
         try:
-            return inverted_index.get_bm25_tf(doc_id, term, k1)
+            return inverted_index.get_bm25_tf(doc_id, term, k1, b)
         except Exception as e:
             print(f"Error: {e}")            
     
@@ -79,6 +79,7 @@ def main() -> None:
     bm25_tf_parser.add_argument("doc_id", type=int, help="Document ID")
     bm25_tf_parser.add_argument("term", type=str, help="Term to get BM25 TF score for")
     bm25_tf_parser.add_argument("k1", type=float, nargs='?', default=DEFAULT_BM25_K1, help="Tunable BM25 K1 parameter")
+    bm25_tf_parser.add_argument("b", type=float, nargs='?', default=DEFAULT_BM25_B, help="Tunable BM25 B parameter")
 
     args = parser.parse_args()
 

@@ -1,7 +1,7 @@
 import os
 import pickle
 from utility import load_movies, load_stopwords, tokenize
-from constants import DEFAULT_BM25_K1
+from constants import DEFAULT_BM25_K1, DEFAULT_BM25_B
 import collections
 import math
 
@@ -11,11 +11,13 @@ class InvertedIndex:
         self.index = {}
         self.docmap = {}
         self.term_frequencies = {}
+        self.doc_lengths = {}
         self.stopwords = load_stopwords()   
 
     def __add_document(self, doc_id: int, text: str) -> None:
         
         tokens = tokenize(text, self.stopwords)
+        self.doc_lengths[doc_id] = len(tokens)        
         self.term_frequencies[doc_id] = collections.Counter()
         for token in tokens:            
             if token in self.index:
@@ -23,9 +25,19 @@ class InvertedIndex:
                     self.index[token].append(doc_id)
             else:
                 self.index[token] = [doc_id]
-            self.term_frequencies[doc_id][token] += 1
+            self.term_frequencies[doc_id][token] += 1        
         for entry in self.index:
-            self.index[entry] = sorted(self.index[entry])            
+            self.index[entry] = sorted(self.index[entry])
+
+    def __get_avg_doc_length(self) -> float:
+        if len(self.doc_lengths) > 0:
+            total_token_count = 0
+            for entry in self.doc_lengths:
+                total_token_count += self.doc_lengths[entry]
+            return total_token_count / len(self.doc_lengths)
+        else:
+            return 0.0
+
 
     def get_documents(self, term: str) -> list[int]:
         if term in self.index:
@@ -81,10 +93,19 @@ class InvertedIndex:
         except Exception as e:
             print("Error: BM25_IDF could not be calculated") 
 
-    def get_bm25_tf(self, doc_id: int, term: str, k1: float = DEFAULT_BM25_K1) -> float:
+    def get_bm25_tf(self, doc_id: int, term: str, k1: float = DEFAULT_BM25_K1, b: float = DEFAULT_BM25_B) -> float:
+        if doc_id in self.doc_lengths:
+            doc_length = self.doc_lengths[doc_id]
+        else:
+            doc_length = 0
+        
+        # Length normalization factor        
+        length_norm = 1 - b + b * (doc_length / self.__get_avg_doc_length())        
         tf = self.get_tf(doc_id, term)
-        saturated_tf = (tf * (k1 + 1)) / (tf + k1)
-        return saturated_tf
+                         
+        # Apply to term frequency
+        tf_component = (tf * (k1 + 1)) / (tf + k1 * length_norm)
+        return tf_component
 
     def build(self) -> None:
         movies = load_movies()
@@ -106,6 +127,7 @@ class InvertedIndex:
             pickle.dump(self.index, open(os.path.join(os.path.dirname(os.path.dirname(__file__)), "cache", "index.pkl"), "wb"))
             pickle.dump(self.docmap, open(os.path.join(os.path.dirname(os.path.dirname(__file__)), "cache", "docmap.pkl"), "wb"))
             pickle.dump(self.term_frequencies, open(os.path.join(os.path.dirname(os.path.dirname(__file__)), "cache", "term_frequencies.pkl"), "wb"))
+            pickle.dump(self.doc_lengths, open(os.path.join(os.path.dirname(os.path.dirname(__file__)), "cache", "doc_lengths.pkl"), "wb"))
         except Exception as e:
             print(f"Error: {e}")
     
@@ -114,8 +136,10 @@ class InvertedIndex:
             self.index = pickle.load(open(os.path.join(os.path.dirname(os.path.dirname(__file__)), "cache", "index.pkl"), "rb"))
             self.docmap = pickle.load(open(os.path.join(os.path.dirname(os.path.dirname(__file__)), "cache", "docmap.pkl"), "rb"))
             self.term_frequencies = pickle.load(open(os.path.join(os.path.dirname(os.path.dirname(__file__)), "cache", "term_frequencies.pkl"), "rb"))
+            self.doc_lengths = pickle.load(open(os.path.join(os.path.dirname(os.path.dirname(__file__)), "cache", "doc_lengths.pkl"), "rb"))
             return True
         except Exception as e:
+            print(f"Error loading index: {e}")
             return False
 
     
