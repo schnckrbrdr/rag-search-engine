@@ -51,6 +51,14 @@ def bm25_tf_command(doc_id: int, term: str, k1: float = DEFAULT_BM25_K1, b: floa
         except Exception as e:
             print(f"Error: {e}")            
     
+def bm25_search_command(query: str, limit: int) -> list[dict]:
+    inverted_index = InvertedIndex()
+    if not inverted_index.load():
+        print("Index not found. Build index first!")
+        return []
+    else:
+        return inverted_index.bm25_search(query, limit)
+
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Keyword Search CLI")
@@ -80,6 +88,9 @@ def main() -> None:
     bm25_tf_parser.add_argument("term", type=str, help="Term to get BM25 TF score for")
     bm25_tf_parser.add_argument("k1", type=float, nargs='?', default=DEFAULT_BM25_K1, help="Tunable BM25 K1 parameter")
     bm25_tf_parser.add_argument("b", type=float, nargs='?', default=DEFAULT_BM25_B, help="Tunable BM25 B parameter")
+
+    bm25search_parser = subparsers.add_parser("bm25search", help="Search movies using full BM25 scoring")
+    bm25search_parser.add_argument("query", type=str, help="Search query")
 
     args = parser.parse_args()
 
@@ -134,6 +145,14 @@ def main() -> None:
         case "bm25tf":
             try:
                 print(f"BM25 TF score of '{args.term}' in document '{args.doc_id}': {bm25_tf_command(args.doc_id, args.term, args.k1):.2f}")
+            except Exception as e:
+                print(f"Error: {e}")
+
+        case "bm25search":
+            try:
+                sorted_scores = bm25_search_command(args.query, 5)
+                for i in range(0, min(len(sorted_scores), 6)):                   
+                    print(f"{i + 1}. ({sorted_scores[i]['doc_id']}) {sorted_scores[i]['movie']['title']} - Score: {sorted_scores[i]['score']:.2f}")
             except Exception as e:
                 print(f"Error: {e}")
 
