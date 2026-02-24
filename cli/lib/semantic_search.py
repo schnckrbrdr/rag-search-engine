@@ -26,6 +26,36 @@ def verify_embeddings():
     print(f"Number of docs:   {len(documents)}")
     print(f"Embeddings shape: {semantic_search.embeddings.shape[0]} vectors in {semantic_search.embeddings.shape[1]} dimensions")
 
+def search_command(query: str, limit: int):
+    semantic_search = SemanticSearch()
+    documents = load_data()
+    semantic_search.load_or_create_embeddings(documents)
+    search_result = semantic_search.search(query, limit)
+    
+    for i in range(0, len(search_result)):
+        print(f"{i + 1}. {search_result[i]['title']} (score: {search_result[i]['score']:.4f})")
+        print(f"{search_result[i]['description'][:100]}...\n")
+
+def fixed_size_chunking(text: str, chunk_size: int):
+    words = text.split()
+    chunks = []
+
+    n_words = len(words)
+    i = 0
+    while i < n_words:
+        chunk_words = words[i : i + chunk_size]
+        chunks.append(" ".join(chunk_words))
+        i += chunk_size
+
+    return chunks
+
+
+def chunk_command(text: str, chunk_size: int):
+    chunks = fixed_size_chunking(text, chunk_size)
+    print(f"Chunking {len(text)} characters")
+    for i, chunk in enumerate(chunks):
+        print(f"{i + 1}. {chunk}")   
+
 def load_data():
     movies_file = open(DATA_PATH)
     movies_json = json.load(movies_file)        
@@ -39,6 +69,16 @@ def embed_query_text(query: str):
     print(f"First 5 dimensions: {embedding[:5]}")
     print(f"Shape: {embedding.shape}")
 
+def cosine_similarity(vec1, vec2):
+    dot_product = np.dot(vec1, vec2)
+    norm1 = np.linalg.norm(vec1)
+    norm2 = np.linalg.norm(vec2)
+
+    if norm1 == 0 or norm2 == 0:
+        return 0.0
+
+    return dot_product / (norm1 * norm2)
+
 class SemanticSearch:
 
     def __init__(self) -> None:
@@ -48,6 +88,26 @@ class SemanticSearch:
         self.document_map = {}
         self.embeddings_path = os.path.join(CACHE_DIR, "movie_embeddings.npy")
 
+    def search(self, query:str, limit: int):
+        if self.embeddings is None:
+            raise ValueError("No embeddings loaded. Call `load_or_create_embeddings` first.")
+        
+        query_embeddings = self.generate_embedding(query)
+
+        score_document_tuples = []
+
+        for i in range(0, len(self.documents)):
+            similarity_score = cosine_similarity(self.embeddings[i], query_embeddings)
+            score_document_tuples.append((similarity_score, self.documents[i]))
+
+        sorted_score_document_tuples = sorted(score_document_tuples, key=lambda d: d[0], reverse=True)
+        
+        results = []
+        for score, document in sorted_score_document_tuples[:limit]:
+            results.append({'score': score, 'title': document['title'], 'description': document['description']})
+
+        return results
+    
     def generate_embedding(self, text: str):
         if not text or not text.strip():
             raise ValueError(f"Error: generate_embedding(): text mus not by empty")
