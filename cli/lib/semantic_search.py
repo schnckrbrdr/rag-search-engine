@@ -36,22 +36,24 @@ def search_command(query: str, limit: int):
         print(f"{i + 1}. {search_result[i]['title']} (score: {search_result[i]['score']:.4f})")
         print(f"{search_result[i]['description'][:100]}...\n")
 
-def fixed_size_chunking(text: str, chunk_size: int):
+def fixed_size_chunking(text: str, chunk_size: int, chunk_overlap: int):
     words = text.split()
     chunks = []
 
     n_words = len(words)
     i = 0
+    offset = 0
     while i < n_words:
-        chunk_words = words[i : i + chunk_size]
+        if i > 0:
+            offset += chunk_overlap
+        chunk_words = words[i - offset : i + chunk_size - offset]
         chunks.append(" ".join(chunk_words))
         i += chunk_size
 
     return chunks
 
-
-def chunk_command(text: str, chunk_size: int):
-    chunks = fixed_size_chunking(text, chunk_size)
+def chunk_command(text: str, chunk_size: int, chunk_overlap: int):
+    chunks = fixed_size_chunking(text, chunk_size, chunk_overlap)
     print(f"Chunking {len(text)} characters")
     for i, chunk in enumerate(chunks):
         print(f"{i + 1}. {chunk}")   
