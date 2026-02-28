@@ -2,6 +2,7 @@ from sentence_transformers import SentenceTransformer
 import numpy as np
 import json
 import os
+import re
 from constants import CACHE_DIR, DATA_PATH
 
 def verify_model():
@@ -58,6 +59,27 @@ def chunk_command(text: str, chunk_size: int, chunk_overlap: int):
     for i, chunk in enumerate(chunks):
         print(f"{i + 1}. {chunk}")   
 
+def semantic_chunking(text: str, max_chunk_size: int, chunk_overlap: int) -> list[str]:
+    parts = re.split(r"(?<=[.!?])\s+", text)
+    chunks = []
+
+    n_parts = len(parts)
+    i = 0
+    while i < n_parts:
+        chunk_parts = parts[i : i + max_chunk_size]
+        if chunks and len(chunk_parts) <= chunk_overlap:
+            break
+        chunks.append(" ".join(chunk_parts))
+        i += max_chunk_size - chunk_overlap        
+        
+    return chunks
+
+def semantic_chunk_command(text: str, max_chunk_size: int, chunk_overlap: int):
+    chunks = semantic_chunking(text, max_chunk_size, chunk_overlap)
+    print(f"Semantically chunking {len(text)} characters")
+    for i, chunk in enumerate(chunks):
+        print(f"{chunk}")   
+
 def load_data():
     movies_file = open(DATA_PATH)
     movies_json = json.load(movies_file)        
@@ -83,7 +105,7 @@ def cosine_similarity(vec1, vec2):
 
 class SemanticSearch:
 
-    def __init__(self) -> None:
+    def __init__(self, model_name="all-MiniLM-L6-v2") -> None:
         self.model = SentenceTransformer('all-MiniLM-L6-v2', token=True)
         self.embeddings = None
         self.documents = None
