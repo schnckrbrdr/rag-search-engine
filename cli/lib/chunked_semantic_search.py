@@ -49,10 +49,6 @@ class ChunkedSemanticSearch(SemanticSearch):
             doc_chunks = semantic_chunking(doc['description'], 4, 1)
             chunk_list.extend(doc_chunks)
 
-            if i == 0:
-                print(f"Description: {doc['description']}")
-                print(f"Chunks: {doc_chunks}")
-
             # Iterate over chunks of current document description and add a dictionary for each chunk to store movie-index, relative chunk-index and number of chunks of current document-description
             for j in range(0, len(doc_chunks)):
                 chunk_dict.append({'movie_idx': i, 'chunk_idx': j, 'total_chunks': len(doc_chunks)})
