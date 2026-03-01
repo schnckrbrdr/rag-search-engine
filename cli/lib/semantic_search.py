@@ -60,17 +60,33 @@ def chunk_command(text: str, chunk_size: int, chunk_overlap: int):
         print(f"{i + 1}. {chunk}")   
 
 def semantic_chunking(text: str, max_chunk_size: int, chunk_overlap: int) -> list[str]:
-    parts = re.split(r"(?<=[.!?])\s+", text)
+    
+    stripped_text = text.strip()
+
+    if len(stripped_text) == 0:
+        return []
+
+    parts = re.split(r"(?<=[.!?])\s+", stripped_text)
+
+    if len(parts) == 1 and not parts[0].endswith(('.', '!', '?')):
+        return parts
+
     chunks = []
 
     n_parts = len(parts)
     i = 0
     while i < n_parts:
         chunk_parts = parts[i : i + max_chunk_size]
-        if chunks and len(chunk_parts) <= chunk_overlap:
+        stripped_chunk_parts = []
+        for i in range(0, len(chunk_parts)):
+            stripped_chunk_part = chunk_parts[i].strip()
+            if len(stripped_chunk_part) > 0:
+                stripped_chunk_parts.append(stripped_chunk_part)
+        
+        if chunks and len(stripped_chunk_parts) <= chunk_overlap:
             break
-        chunks.append(" ".join(chunk_parts))
-        i += max_chunk_size - chunk_overlap        
+        chunks.append(" ".join(stripped_chunk_parts))
+        i += max_chunk_size - chunk_overlap       
         
     return chunks
 
@@ -78,7 +94,7 @@ def semantic_chunk_command(text: str, max_chunk_size: int, chunk_overlap: int):
     chunks = semantic_chunking(text, max_chunk_size, chunk_overlap)
     print(f"Semantically chunking {len(text)} characters")
     for i, chunk in enumerate(chunks):
-        print(f"{chunk}")   
+        print(f"{i + 1}. {chunk}")   
 
 def load_data():
     movies_file = open(DATA_PATH)
