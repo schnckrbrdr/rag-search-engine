@@ -1,7 +1,7 @@
 import os
 import pickle
 from utility import load_movies, load_stopwords, tokenize
-from constants import DEFAULT_BM25_K1, DEFAULT_BM25_B
+from constants import DEFAULT_BM25_K1, DEFAULT_BM25_B, CACHE_DIR
 import collections
 import math
 
@@ -13,6 +13,7 @@ class InvertedIndex:
         self.term_frequencies = {}
         self.doc_lengths = {}
         self.stopwords = load_stopwords()   
+        self.index_path = os.path.join(CACHE_DIR, "index.pkl")
 
     def __add_document(self, doc_id: int, text: str) -> None:
         
@@ -124,7 +125,7 @@ class InvertedIndex:
             scores.append({'doc_id': doc_id, 'score': score, 'movie': self.docmap[doc_id]})
             
         sorted_scores = sorted(scores, key=lambda d: d['score'], reverse=True)
-        return sorted_scores[0:min(len(scores), limit)]            
+        return sorted_scores[0:min(len(scores), limit)]          
 
     def build(self) -> None:
         movies = load_movies()
