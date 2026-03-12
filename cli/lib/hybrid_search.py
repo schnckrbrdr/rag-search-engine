@@ -1,6 +1,8 @@
 import os
 import time
 
+from sentence_transformers import CrossEncoder
+
 from lib.chunked_semantic_search import ChunkedSemanticSearch
 from inverted_index import InvertedIndex
 from utility import load_movies
@@ -103,6 +105,32 @@ def rrf_search_command(query: str, k: int, limit: int, enhance_choice: str, rera
                 print(f"{result['document']['description'][:100]}...\n")
             else:
                 print(f"Invalid Movie-ID returnes: {int(id)}")
+
+    elif rerank_method == "cross_encoder":
+
+        results = dict(hybrid_search.rrf_search(query, k, limit * 5))
+
+        pairs = []
+
+        for key in results:
+            pairs.append([query, f"{results[key]['document']['title']} - {results[key]['document']['description']}"])
+
+        cross_encoder = CrossEncoder("cross-encoder/ms-marco-TinyBERT-L2-v2")
+
+        scores = cross_encoder.predict(pairs)
+
+        for idx, key in enumerate(results):
+            results[key]['cross_encoder_score'] = scores[idx]
+
+        sorted_results = sorted(results.items(), key=lambda d: d[1]['cross_encoder_score'], reverse=True)[0:limit]
+
+        for idx, result in enumerate(sorted_results):
+            print(f"{idx + 1}. {result[1]['document']['title']}")
+            print(f"Cross Encoder Score: {result[1]['cross_encoder_score']:.4f}")
+            print(f"RFF Score: {result[1]['rrf_score']:.4f}")
+            print(f"BM25 Rank: {result[1]['bm25_rank']}, Semantic Rank: {result[1]['semantic_rank']}")
+            print(f"{result[1]['document']['description'][:100]}...\n")
+
 
     else:
 
