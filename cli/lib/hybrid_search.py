@@ -1,8 +1,10 @@
 import os
+import time
 
 from lib.chunked_semantic_search import ChunkedSemanticSearch
 from inverted_index import InvertedIndex
 from utility import load_movies
+from lib.llm import LLM
 
 def normalize_scores(scores: list[float]) -> list[float]:
     
@@ -43,20 +45,74 @@ def weighted_search_command(query: str, alpha: float, limit: int):
         print(f"{idx + 1}. {result[1]['document']['title']}")
         print(f"Hybrid Score: {result[1]['hybrid_score']:.4f}")
         print(f"BM25: {result[1]['bm25score']:.4f}, Semantic: {result[1]['semantic_score']:.4f}")
-        print(f"{result[1]['document']['description'][:100]}\n")
+        print(f"{result[1]['document']['description'][:100]}...\n")
 
-def rrf_search_command(query: str, k: int, limit: int):
+def rrf_search_command(query: str, k: int, limit: int, enhance_choice: str, rerank_method: str):
     documents = load_movies()
+
+    llm = LLM("gemma-3-27b-it")
+    rerank_limit = limit
+
+    if enhance_choice:
+        
+        new_query = llm.enhance_query(query, enhance_choice)
+        if new_query != query:
+           print(f"Enhanced query ({enhance_choice}): '{query}' -> '{new_query}'\n")
+           query = new_query
+
     hybrid_search = HybridSearch(documents['movies'])
-    results = hybrid_search.rrf_search(query, k, limit)
 
-    for idx, result in enumerate(results):
-        print(f"{idx + 1}. {result[1]['document']['title']}")
-        print(f"RFF Score: {result[1]['rrf_score']:.4f}")
-        print(f"BM25 Rank: {result[1]['bm25_rank']}, Semantic Rank: {result[1]['semantic_rank']}")
-        print(f"{result[1]['document']['description'][:100]}\n")
+    if rerank_method == "individual":
+        
+        results = hybrid_search.rrf_search(query, k, limit * 5)
 
+        for result in results:
 
+            score = llm.rerank_request(query, result[1])
+
+            result[1]['rerank_score'] = score
+            time.sleep(3)
+
+        sorted_scores = sorted(results, key=lambda d: d[1]['rerank_score'], reverse=True)[0:limit]
+
+        for idx, result in enumerate(sorted_scores):
+            print(f"{idx + 1}. {result[1]['document']['title']}")
+            print(f"Re-rank Score: {result[1]['rerank_score']} / 10")
+            print(f"RFF Score: {result[1]['rrf_score']:.4f}")
+            print(f"BM25 Rank: {result[1]['bm25_rank']}, Semantic Rank: {result[1]['semantic_rank']}")
+            print(f"{result[1]['document']['description'][:100]}...\n")
+    
+    elif rerank_method == "batch":
+        
+        results = hybrid_search.rrf_search(query, k, limit * 5)
+
+        ranked_movie_ids = llm.rerank_batch(query, results)[:limit]
+
+        results_dict = dict(results)
+
+        counter = 0
+
+        for id in ranked_movie_ids:
+            if int(id) in results_dict:
+                result = results_dict[int(id)]
+                counter += 1
+                print(f"{counter}. {result['document']['title']}")
+                print(f"Re-rank Rank: {counter}")
+                print(f"RFF Score: {result['rrf_score']:.4f}")
+                print(f"BM25 Rank: {result['bm25_rank']}, Semantic Rank: {result['semantic_rank']}")
+                print(f"{result['document']['description'][:100]}...\n")
+            else:
+                print(f"Invalid Movie-ID returnes: {int(id)}")
+
+    else:
+
+        results = hybrid_search.rrf_search(query, k, rerank_limit)
+
+        for idx, result in enumerate(results):
+            print(f"{idx + 1}. {result[1]['document']['title']}")
+            print(f"RFF Score: {result[1]['rrf_score']:.4f}")
+            print(f"BM25 Rank: {result[1]['bm25_rank']}, Semantic Rank: {result[1]['semantic_rank']}")
+            print(f"{result[1]['document']['description'][:100]}...\n") 
 
 
 class HybridSearch:

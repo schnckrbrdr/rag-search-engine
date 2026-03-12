@@ -81,18 +81,13 @@ class InvertedIndex:
                 print("Error: TFIDF could not be calculated")
 
     def get_bm25_idf(self, term: str) -> float:
-        try:
-            # document frequency - how many documents in the whole dataset contain the search term
-            df = 0
-            # document count - how many documents are in the dataset
-            n = 0
-            for entry in self.docmap:
-                if self.get_tf(entry, term) > 0:
-                    df += 1
-                n += 1                    
-            return math.log((n - df + 0.5) / (df + 0.5) + 1)                
-        except Exception as e:
-            print("Error: BM25_IDF could not be calculated") 
+        tokens = tokenize(term, self.stopwords)
+        if len(tokens) != 1:
+            raise ValueError("term must be a single token")
+        token = tokens[0]
+        doc_count = len(self.docmap)
+        term_doc_count = len(self.index[token])
+        return math.log((doc_count - term_doc_count + 0.5) / (term_doc_count + 0.5) + 1)
 
     def get_bm25_tf(self, doc_id: int, term: str, k1: float = DEFAULT_BM25_K1, b: float = DEFAULT_BM25_B) -> float:
         if doc_id in self.doc_lengths:
