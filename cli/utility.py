@@ -21,6 +21,15 @@ def load_stopwords() -> list[str]:
     except Exception as e:
         print(e)
         return None
+    
+def load_json(file_path) -> dict:
+    try:
+        json_data = json.load(open(file_path))
+        return json_data
+    except Exception as e:
+        print(e)
+        return None
+
 
 # Tokenize passed text and remove tokens listed in stopwords list
 def tokenize(text: str, stopwords: list[str]) -> list[str]:
