@@ -36,9 +36,13 @@ def main():
                 found_relevant += 1
 
         precision_at_k = found_relevant / len(results)
+        recall_at_k = found_relevant / len(relevant_titles)
+        f1_score = 2 * (precision_at_k * recall_at_k) / (precision_at_k + recall_at_k)
 
         print(f"- Query: {test_case['query']}")
         print(f"  - Precision@{limit}: {precision_at_k:.4f}")
+        print(f"  - Recall@{limit}: {recall_at_k:.4f}")
+        print(f"  - F1 Score: {f1_score:.4f}")
         print(f"  - Retrieved: {', '.join(found_titles)}")
         print(f"  - Relevant: {', '.join(relevant_titles)}\n")
 

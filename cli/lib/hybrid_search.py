@@ -49,7 +49,7 @@ def weighted_search_command(query: str, alpha: float, limit: int):
         print(f"BM25: {result[1]['bm25score']:.4f}, Semantic: {result[1]['semantic_score']:.4f}")
         print(f"{result[1]['document']['description'][:100]}...\n")
 
-def rrf_search_command(query: str, k: int, limit: int, enhance_choice: str, rerank_method: str):
+def rrf_search_command(query: str, k: int, limit: int, enhance_choice: str, rerank_method: str, evaluate: bool):
     documents = load_movies()
 
     llm = LLM("gemma-3-27b-it")
@@ -123,7 +123,7 @@ def rrf_search_command(query: str, k: int, limit: int, enhance_choice: str, rera
             results[key]['cross_encoder_score'] = scores[idx]
 
         sorted_results = sorted(results.items(), key=lambda d: d[1]['cross_encoder_score'], reverse=True)[0:limit]
-
+        
         for idx, result in enumerate(sorted_results):
             print(f"{idx + 1}. {result[1]['document']['title']}")
             print(f"Cross Encoder Score: {result[1]['cross_encoder_score']:.4f}")
@@ -136,11 +136,33 @@ def rrf_search_command(query: str, k: int, limit: int, enhance_choice: str, rera
 
         results = hybrid_search.rrf_search(query, k, rerank_limit)
 
+        formatted_evaluation_prompt_results = []
+
         for idx, result in enumerate(results):
+            
+            formatted_evaluation_prompt_result = ""
+            
             print(f"{idx + 1}. {result[1]['document']['title']}")
             print(f"RFF Score: {result[1]['rrf_score']:.4f}")
             print(f"BM25 Rank: {result[1]['bm25_rank']}, Semantic Rank: {result[1]['semantic_rank']}")
             print(f"{result[1]['document']['description'][:100]}...\n") 
+
+            formatted_evaluation_prompt_result += (f"{idx + 1}. {result[1]['document']['title']}\n")
+            formatted_evaluation_prompt_result += (f"RFF Score: {result[1]['rrf_score']:.4f}\n")
+            formatted_evaluation_prompt_result += (f"BM25 Rank: {result[1]['bm25_rank']}, Semantic Rank: {result[1]['semantic_rank']}\n")
+            formatted_evaluation_prompt_result += (f"{result[1]['document']['description']}\n")
+
+            formatted_evaluation_prompt_results.append(formatted_evaluation_prompt_result)
+
+        evaluation_scores = llm.evaluation_request(query, formatted_evaluation_prompt_results)
+
+        if len(evaluation_scores) > len(results):
+            print("Result-Length mismatch!")
+            return
+
+        for idx, score in enumerate(evaluation_scores):
+            print(f"{idx + 1}. {results[idx][1]['document']['title']}: {score}/3")
+        
 
 
 class HybridSearch:
@@ -195,7 +217,7 @@ class HybridSearch:
         return sorted_scores
 
     def rrf_search(self, query, k, limit):
-        
+
         bm25_results = self._bm25_search(query, 500 * limit)
         chunked_search_results = self.semantic_search.search_chunks(query, 500 * limit)
 

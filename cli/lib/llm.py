@@ -139,3 +139,140 @@ class LLM():
             response_list = []
 
         return response_list
+    
+    def evaluation_request(self, query: str, to_evaluate:list[str]):
+
+        prompt = f"""Rate how relevant each result is to this query on a 0-3 scale:
+
+                    Query: "{query}"
+
+                    Results:
+                    {chr(10).join(to_evaluate)}
+
+                    Scale:
+                    - 3: Highly relevant
+                    - 2: Relevant
+                    - 1: Marginally relevant
+                    - 0: Not relevant
+
+                    Do NOT give any numbers other than 0, 1, 2, or 3.
+
+                    Return ONLY the scores in the same order you were given the documents. Return a valid JSON list, nothing else. For example:
+
+                    [2, 0, 3, 2, 0, 1]"""
+        
+        response = self.client.models.generate_content(
+            model = self.model_name,
+            contents = prompt
+        )
+
+        try:
+            response_list = list(response.text[1:-1].split(','))
+        except:
+            response_list = []
+
+        return response_list
+    
+    def rag_request(self, query: str, documents: list[str]) -> str:
+
+        prompt = f"""Answer the question or provide information based on the provided documents. This should be tailored to Hoopla users. Hoopla is a movie streaming service.
+
+                    Query: {query}
+
+                    Documents:
+                    {chr(10).join(documents)}
+
+                    Provide a comprehensive answer that addresses the query:"""
+        
+        response = self.client.models.generate_content(
+            model = self.model_name,
+            contents = prompt
+        )
+
+        if response:
+            return response.text            
+        else:
+            raise RuntimeError("Error retrieving LLM-Response")
+        
+    def rag_summarize(self, query:str, documents: list[str]) -> str:
+
+        prompt = f"""
+                    Provide information useful to this query by synthesizing information from multiple search results in detail.
+                    The goal is to provide comprehensive information so that users know what their options are.
+                    Your response should be information-dense and concise, with several key pieces of information about the genre, plot, etc. of each movie.
+                    This should be tailored to Hoopla users. Hoopla is a movie streaming service.
+                    Query: {query}
+                    Search Results:
+                    {chr(10).join(documents)}
+                    Provide a comprehensive 3–4 sentence answer that combines information from multiple sources:
+                    """
+        response = self.client.models.generate_content(
+            model = self.model_name,
+            contents = prompt
+        )
+
+        if response:
+            return response.text            
+        else:
+            raise RuntimeError("Error retrieving LLM-Response")
+
+    def rag_citations(self, query: str, documents: list[str]):
+
+        prompt = f"""Answer the question or provide information based on the provided documents.
+
+                    This should be tailored to Hoopla users. Hoopla is a movie streaming service.
+
+                    If not enough information is available to give a good answer, say so but give as good of an answer as you can while citing the sources you have.
+
+                    Query: {query}
+
+                    Documents:
+                    {chr(10).join(documents)}
+
+                    Instructions:
+                    - Provide a comprehensive answer that addresses the query
+                    - Cite sources using [1], [2], etc. format when referencing information
+                    - If sources disagree, mention the different viewpoints
+                    - If the answer isn't in the documents, say "I don't have enough information"
+                    - Be direct and informative
+
+                    Answer:"""    
+        
+        response = self.client.models.generate_content(
+            model = self.model_name,
+            contents = prompt
+        )
+
+        if response:
+            return response.text            
+        else:
+            raise RuntimeError("Error retrieving LLM-Response")
+        
+    def rag_question(self, question: str, documents: list[str]):
+
+        prompt = f"""Answer the user's question based on the provided movies that are available on Hoopla.
+
+                    This should be tailored to Hoopla users. Hoopla is a movie streaming service.
+
+                    Question: {question}
+
+                    Documents:
+                    {chr(10).join(documents)}
+
+                    Instructions:
+                    - Answer questions directly and concisely
+                    - Be casual and conversational
+                    - Don't be cringe or hype-y
+                    - Talk like a normal person would in a chat conversation
+
+                    Answer:"""   
+        
+        response = self.client.models.generate_content(
+            model = self.model_name,
+            contents = prompt
+        )
+
+        if response:
+            return response.text            
+        else:
+            raise RuntimeError("Error retrieving LLM-Response")
